@@ -2,6 +2,7 @@
 // include: minimum_runtime_check.js
 (function() {
   // "30.0.0" -> 300000
+  Module['locateFile'] = (path) => 'Game/' + path;
   function humanReadableVersionToPacked(str) {
     str = str.split('-')[0]; // Remove any trailing part from e.g. "12.53.3-alpha"
     var vers = str.split('.').slice(0, 3);
