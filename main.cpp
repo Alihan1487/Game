@@ -12,10 +12,10 @@ SDL_Rect rect={100,100,100,100};
 bool running = true;
 int cur=0;
 int last=0;
-std::vector<SDL_Rect> walls={SDL_Rect{600,500,100,100}};
+std::vector<SDL_Rect> walls={SDL_Rect{600,500,150,150}};
 
 extern "C" void load(){
-    int a;
+    int a=0;
     std::ifstream file("/save/data.bin",std::ios::binary);
     file.read(reinterpret_cast<char*>(&a),sizeof(int));
     file.close();
@@ -25,10 +25,10 @@ extern "C" void load(){
     a+=1;
     std::ofstream afile("/save/data.bin",std::ios::binary);
     afile.write(reinterpret_cast<char*>(&a),sizeof(int));
+    afile.close();
     EM_ASM(
             FS.syncfs(false,function (err){});
     );
-    afile.close();
 }
 
 void loop() {
@@ -44,6 +44,30 @@ void loop() {
     }
     if (!running)
         emscripten_cancel_main_loop();
+    if (k[SDL_SCANCODE_W]){
+        rect.y-=speed*delta;
+        for (auto& i:walls)
+            if (SDL_HasIntersection(&i,&rect))
+                rect.y=i.y+i.h;
+    }
+    if (k[SDL_SCANCODE_S]){
+        rect.y+=speed*delta;
+        for (auto& i:walls)
+            if (SDL_HasIntersection(&i,&rect))
+                rect.y=i.y-rect.h;
+    }
+    if (k[SDL_SCANCODE_A]){
+        rect.x-=speed*delta;
+        for (auto& i:walls)
+            if (SDL_HasIntersection(&i,&rect))
+                rect.x=i.x+i.w;
+    }
+    if (k[SDL_SCANCODE_D]){
+        rect.x+=speed*delta;
+        for (auto& i:walls)
+            if (SDL_HasIntersection(&i,&rect))
+                rect.x=i.x-rect.w;
+    }
     SDL_SetRenderDrawColor(renderer, 0, 150, 255, 255);
     SDL_RenderClear(renderer);
     SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
