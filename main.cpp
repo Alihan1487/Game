@@ -35,7 +35,9 @@ void move(SDL_Rect* rect, int targetX, int targetY, float speed, float delta) {
 }
 
 
-extern "C" void load(){
+extern "C"{ 
+EMSCRIPTEN_KEEPALIVE
+void load(){
     int x=0,y=0;
     std::ifstream file("/save/load.bin",std::ios::binary);
     if (!file.is_open()) {
@@ -53,8 +55,10 @@ extern "C" void load(){
     rect.x=x;
     rect.y=y;
 }
-
-extern "C" void save(){
+}
+extern "C" {
+EMSCRIPTEN_KEEPALIVE
+void save(){
     std::ofstream file("/save/load.bin",std::ios::binary);
     file.write(reinterpret_cast<char*>(&rect.x),sizeof(int));
     file.write(reinterpret_cast<char*>(&rect.y),sizeof(int));
@@ -65,7 +69,7 @@ extern "C" void save(){
     );
     alpha=255;
 }
-
+}
 void loop() {
     cur=SDL_GetTicks();
     float delta=(cur-last)/1000.f;
