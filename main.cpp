@@ -13,6 +13,7 @@ SDL_Rect rect;
 bool running = true;
 int cur=0;
 int last=0;
+int strt=0;
 std::vector<SDL_Rect> walls={SDL_Rect{600,500,150,150}};
 
 void move(SDL_Rect* rect, int targetX, int targetY, float speed, float delta) {
@@ -55,7 +56,8 @@ extern "C" void save(){
     file.write(reinterpret_cast<char*>(&rect.y),sizeof(int));
     file.close();
     EM_ASM(
-        FS.syncfs(false,function (err){let i=0;while (i<1000){i++;}});
+        FS.syncfs(false,function (err){});
+        console.log("saved");
     );
 }
 
@@ -69,6 +71,10 @@ void loop() {
     while (SDL_PollEvent(&e)) {
         if (e.type == SDL_QUIT)
             running = false;
+        if (e.type == SDL_KEYDOWN)
+        if (e.key.keysym.sym == SDLK_s)
+        if (e.key.keysym.mod & KMOD_SHIFT)
+        save();
     }
     if (!running)
         emscripten_cancel_main_loop();
@@ -96,6 +102,10 @@ void loop() {
             if (SDL_HasIntersection(&i,&rect))
                 rect.x=i.x-rect.w;
     }
+    if ((cur-strt>30000)){
+        save();
+        strt=cur;
+    }
     SDL_SetRenderDrawColor(renderer, 0, 150, 255, 255);
     SDL_RenderClear(renderer);
     SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
@@ -113,16 +123,23 @@ int main() {
     SDL_Init(SDL_INIT_EVERYTHING);
     window = SDL_CreateWindow("SDL + Emscripten", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 600, 0);
     renderer = SDL_CreateRenderer(window, -1, 0);
-    // Важно! Вместо while используем Emscripten loop:
     EM_ASM(
-        window.addEventListener("beforeunload",()=>{
-            ccall("_save",null,[],[]);
-        })
-    );
+    window.addEventListener("beforeunload", () => {
+        ccall("_save", null, [], []);
+    });
+);
     EM_ASM(
             FS.mkdir("/save");
             FS.mount(IDBFS,{},"/save");
-            FS.syncfs(true,function (err){_load()});
+            FS.syncfs(true,function (err){
+                if (err){
+                console.error("error",err)
+                }
+                else{
+                    console.log("loading");
+                    _load();
+                }
+            });
     );
     emscripten_set_main_loop(loop, 0, 1);
     return 0;
