@@ -1,5 +1,5 @@
 emcc main.cpp -s USE_SDL=2 -s USE_SDL_IMAGE=2 -s USE_SDL_TTF=2 \
--s EXPORTED_FUNCTIONS='["_main","_load"]' \
+-s EXPORTED_FUNCTIONS='["_main","_load","_save"]' \
 -s EXPORTED_RUNTIME_METHODS='["ccall","cwrap"]' \
 -lidbfs.js \
 -o index.html

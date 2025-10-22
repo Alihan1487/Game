@@ -1,6 +1,7 @@
 #include <SDL2/SDL.h>
 #include <iostream>
 #include <fstream>
+#include <cmath>
 #include <vector>
 #include <emscripten.h>
 
@@ -8,26 +9,53 @@
 SDL_Window* window;
 SDL_Renderer* renderer;
 SDL_Texture* txt;
-SDL_Rect rect={100,100,100,100};
+SDL_Rect rect;
 bool running = true;
 int cur=0;
 int last=0;
 std::vector<SDL_Rect> walls={SDL_Rect{600,500,150,150}};
 
+void move(SDL_Rect* rect, int targetX, int targetY, float speed, float delta) {
+    float dx = targetX - rect->x;
+    float dy = targetY - rect->y;
+    float dist = SDL_sqrtf(dx*dx + dy*dy);
+
+    if (dist < 1.0f) return; 
+
+    dx /= dist;
+    dy /= dist;
+
+    rect->x += dx * speed * delta;
+    rect->y += dy * speed * delta;
+}
+
+
 extern "C" void load(){
-    int a=0;
-    std::ifstream file("/save/data.bin",std::ios::binary);
-    file.read(reinterpret_cast<char*>(&a),sizeof(int));
+    int x=0,y=0;
+    std::ifstream file("/save/load.bin",std::ios::binary);
+    if (!file.is_open()) {
+        std::cout << "Save not found";
+        rect.x = 100;
+        rect.y = 100;
+        return;
+    }
+    file.read(reinterpret_cast<char*>(&x),sizeof(int));
+    file.read(reinterpret_cast<char*>(&y),sizeof(int));
+    EM_ASM(
+        {console.log($0,$1);},x,y
+    );
+    file.close();
+    rect.x=x;
+    rect.y=y;
+}
+
+extern "C" void save(){
+    std::ofstream file("/save/load.bin",std::ios::binary);
+    file.write(reinterpret_cast<char*>(&rect.x),sizeof(int));
+    file.write(reinterpret_cast<char*>(&rect.y),sizeof(int));
     file.close();
     EM_ASM(
-        {console.log($0);},a
-    );
-    a+=1;
-    std::ofstream afile("/save/data.bin",std::ios::binary);
-    afile.write(reinterpret_cast<char*>(&a),sizeof(int));
-    afile.close();
-    EM_ASM(
-            FS.syncfs(false,function (err){});
+        FS.syncfs(false,function (err){let i=0;while (i<1000){i++;}});
     );
 }
 
@@ -80,10 +108,17 @@ void loop() {
 }
 
 int main() {
+    rect.w=50;
+    rect.h=50;
     SDL_Init(SDL_INIT_EVERYTHING);
     window = SDL_CreateWindow("SDL + Emscripten", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 600, 0);
     renderer = SDL_CreateRenderer(window, -1, 0);
     // Важно! Вместо while используем Emscripten loop:
+    EM_ASM(
+        window.addEventListener("beforeunload",()=>{
+            ccall("_save",null,[],[]);
+        })
+    );
     EM_ASM(
             FS.mkdir("/save");
             FS.mount(IDBFS,{},"/save");

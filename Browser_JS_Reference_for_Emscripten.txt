@@ -1,0 +1,60 @@
+
+=== Основные браузерные объекты и функции ===
+
+1. window — глобальный объект браузера.
+   • alert(msg), confirm(msg), prompt(msg)
+   • setTimeout(fn, ms), setInterval(fn, ms), requestAnimationFrame(fn)
+   • addEventListener(event, handler), removeEventListener(event, handler)
+   • open(url), close(), focus(), blur()
+   • localStorage, sessionStorage
+   • document, console, location, navigator, history
+
+2. document — DOM дерева.
+   • getElementById(id), querySelector(sel), querySelectorAll(sel)
+   • createElement(tag), createTextNode(text)
+   • appendChild(el), removeChild(el)
+   • body, head, title
+   • addEventListener(event, fn)
+   • document.cookie
+
+3. console — отладка
+   • log(), warn(), error(), info(), table(), clear()
+
+4. localStorage / sessionStorage
+   • setItem(key, value), getItem(key), removeItem(key), clear()
+
+5. fetch и XMLHttpRequest — запросы к серверу.
+   • fetch(url, {method, headers, body})
+   • async/await для ожидания ответа
+
+6. navigator — сведения о браузере и платформе.
+   • userAgent, language, onLine, clipboard
+
+7. location и history
+   • location.href, location.reload()
+   • history.back(), history.forward(), history.pushState()
+
+8. canvas и WebGL
+   • getContext("2d"), drawImage(), fillRect(), clearRect(), toDataURL()
+   • WebGLRenderingContext методы для 3D
+
+9. audio/video элементы
+   • play(), pause(), currentTime, volume
+
+10. события
+   • click, keydown, keyup, mousemove, resize, load, unload, beforeunload
+
+11. File API
+   • FileReader, readAsText(), readAsArrayBuffer()
+
+12. IndexedDB (используется IDBFS в Emscripten)
+   • indexedDB.open(), transaction, objectStore, put(), get()
+
+13. Performance API
+   • performance.now(), memory, mark(), measure()
+
+14. Clipboard API
+   • navigator.clipboard.readText(), writeText()
+
+15. WebAssembly взаимодействие
+   • Module, ccall(), cwrap(), FS, HEAPU8 и др.
