@@ -1,4 +1,5 @@
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_ttf.h>
 #include <iostream>
 #include <fstream>
 #include <cmath>
@@ -9,11 +10,14 @@
 SDL_Window* window;
 SDL_Renderer* renderer;
 SDL_Texture* txt;
+TTF_Font* arial;
+SDL_Texture* safetxt;
 SDL_Rect rect;
 bool running = true;
 int cur=0;
 int last=0;
 int strt=0;
+int alpha=0;
 std::vector<SDL_Rect> walls={SDL_Rect{600,500,150,150}};
 
 void move(SDL_Rect* rect, int targetX, int targetY, float speed, float delta) {
@@ -59,6 +63,7 @@ extern "C" void save(){
         FS.syncfs(false,function (err){});
         console.log("saved");
     );
+    alpha=255;
 }
 
 void loop() {
@@ -68,6 +73,11 @@ void loop() {
     SDL_Event e;
     int speed=400;
     const Uint8* k=SDL_GetKeyboardState(NULL);
+    if (alpha>0)
+    alpha-=100*delta;
+    if (alpha<0)
+    alpha=0;
+    SDL_SetTextureAlphaMod(safetxt,alpha);
     while (SDL_PollEvent(&e)) {
         if (e.type == SDL_QUIT)
             running = false;
@@ -114,15 +124,32 @@ void loop() {
         SDL_SetRenderDrawColor(renderer, 100, 100, 100, 255);
         SDL_RenderFillRect(renderer,&i);
     }
+    {
+        SDL_Rect recto{0,0,100,50};
+        SDL_RenderCopy(renderer,safetxt,nullptr,&recto);
+    }
     SDL_RenderPresent(renderer);
 }
-
 int main() {
     rect.w=50;
     rect.h=50;
     SDL_Init(SDL_INIT_EVERYTHING);
+    TTF_Init();
+
+
     window = SDL_CreateWindow("SDL + Emscripten", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 600, 0);
     renderer = SDL_CreateRenderer(window, -1, 0);
+
+
+    arial=TTF_OpenFont("assets/arialmt.ttf",20);
+    if (!arial){
+        std::cerr<<"FAILED TO LOAD ARIAL";
+        return 1;
+    }
+    SDL_Surface* surff=TTF_RenderText_Solid(arial,"saved",SDL_Color{255,255,255,255});
+    safetxt=SDL_CreateTextureFromSurface(renderer,surff);
+
+
     EM_ASM(
     window.addEventListener("beforeunload", () => {
         ccall("_save", null, [], []);
