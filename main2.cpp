@@ -6,7 +6,6 @@
 #include <vector>
 #include <emscripten.h>
 
-
 SDL_Window* window;
 SDL_Renderer* renderer;
 SDL_Texture* txt;

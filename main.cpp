@@ -8,7 +8,7 @@
 #include <tuple>
 #include <emscripten.h>
 
-
+class Weapon;
 SDL_Window* window;
 SDL_Renderer* renderer;
 SDL_Texture* txt;
@@ -17,6 +17,7 @@ SDL_Texture* safetxt;
 SDL_Texture* playertxt;
 SDL_Texture* walltxt;
 SDL_Texture* bgtxt;
+Weapon* player;
 SDL_Rect rect;
 float delta;
 bool running = true;
@@ -43,19 +44,29 @@ void move(SDL_Rect* rect, int targetX, int targetY, float speed, float delta) {
 class Weapon{
     public:
     int speed;
-    int current_cooldown;
+    float current_cooldown;
     int cooldown;
     size_t mag_size;
     int ammos;
     inline static std::vector<std::tuple<SDL_Rect,std::tuple<int,int>,int>> bullets;
     static void update_all(SDL_Renderer* rend){
+        std::vector<std::tuple<SDL_Rect,std::tuple<int,int>,int>> real;
+        for (auto i:bullets){
+            SDL_Rect r=std::get<0>(i);
+            std::tuple<int,int> coords=std::get<1>(i);
+            int speed=std::get<2>(i);
+            SDL_Rect coordsrect{std::get<0>(coords)-50,std::get<0>(coords)-50,150,150};
+            if (!SDL_HasIntersection(&r,&coordsrect))
+            real.push_back(i);
+        }
+        bullets=real;
         for (int i=0;i<bullets.size();i++){
             move(&std::get<0>(bullets[i]),std::get<0>(std::get<1>(bullets[i])),std::get<1>(std::get<1>(bullets[i])),std::get<2>(bullets[i]),delta);
             SDL_SetRenderDrawColor(rend,255,0,0,255);
             SDL_RenderFillRect(rend,&std::get<0>(bullets[i]));
         }
     }
-    virtual void shoot(SDL_Rect who){};
+    virtual void shoot(SDL_Rect who,int x,int y){};
 };
 
 class Pistol : public Weapon{
@@ -67,12 +78,18 @@ class Pistol : public Weapon{
         this->ammos=ammos;
         speed=1000;
     }
-    void shoot(SDL_Rect who) override{
+    void shoot(SDL_Rect who,int x,int y) override{
         SDL_Rect shrect{who.x,who.y,10,10};
-        int x,y;
-        Uint32 mstate=SDL_GetMouseState(&x,&y);
-        auto i=std::make_tuple(shrect,std::make_tuple(x,y),speed);
-        bullets.push_back(i);
+        if (ammos==0){
+            ammos=mag_size;
+            ammos-=mag_size;
+            cooldown=2000;
+        }
+        if (current_cooldown==0){
+            auto i=std::make_tuple(shrect,std::make_tuple(x,y),speed);
+            bullets.push_back(i);
+            current_cooldown+=cooldown;
+        }
     }
 };
 
@@ -119,6 +136,8 @@ void loop() {
     SDL_Event e;
     int speed=400;
     const Uint8* k=SDL_GetKeyboardState(NULL);
+    int mx,my;
+    Uint32 mstate=SDL_GetMouseState(&mx,&my);
     if (alpha>0)
     alpha-=100*delta;
     if (alpha<0)
@@ -158,6 +177,12 @@ void loop() {
             if (SDL_HasIntersection(&i,&rect))
                 rect.x=i.x-rect.w;
     }
+    if (mstate & SDL_BUTTON_LMASK)
+    player->shoot(rect,mx,my);
+    if (player->current_cooldown>0)
+    player->current_cooldown-=delta;
+    if (player->current_cooldown<0)
+    player->current_cooldown=0;
     if ((cur-strt>30000)){
         save();
         strt=cur;
@@ -180,6 +205,8 @@ void loop() {
     SDL_RenderPresent(renderer);
 }
 int main() {
+
+    player=new Pistol(40);
 
     SDL_Init(SDL_INIT_EVERYTHING);
     TTF_Init();
