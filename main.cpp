@@ -137,6 +137,8 @@ void loop() {
 }
 int main() {
 
+    SDL_Init(SDL_INIT_EVERYTHING);
+    TTF_Init();
 
     window = SDL_CreateWindow("SDL + Emscripten", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 600, 0);
     renderer = SDL_CreateRenderer(window, -1, 0);
@@ -144,8 +146,6 @@ int main() {
 
     rect.w=100;
     rect.h=100;
-    SDL_Init(SDL_INIT_EVERYTHING);
-    TTF_Init();
 
     SDL_Surface* s=IMG_Load("assets/plr.png");
     if (!s){
