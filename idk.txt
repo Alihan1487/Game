@@ -1,4 +1,6 @@
 emcc main.cpp -s USE_SDL=2 -s USE_SDL_IMAGE=2 -s USE_SDL_TTF=2 \
 -lidbfs.js \
+-s EXPORTED_FUNCTIONS='["_main","_load","_save"]' \
+-s EXPORTED_RUNTIME_METHODS='["ccall","cwrap"]' \
 --preload-file assets@/assets \
 -o index.html

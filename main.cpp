@@ -1,5 +1,6 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
+#include <SDL2/SDL_image.h>
 #include <iostream>
 #include <fstream>
 #include <cmath>
@@ -12,6 +13,7 @@ SDL_Renderer* renderer;
 SDL_Texture* txt;
 TTF_Font* arial;
 SDL_Texture* safetxt;
+SDL_Texture* playertxt;
 SDL_Rect rect;
 bool running = true;
 int cur=0;
@@ -122,8 +124,7 @@ void loop() {
     }
     SDL_SetRenderDrawColor(renderer, 0, 150, 255, 255);
     SDL_RenderClear(renderer);
-    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-    SDL_RenderFillRect(renderer,&rect);
+    SDL_RenderCopy(renderer,playertxt,nullptr,&rect);
     for (auto& i:walls){
         SDL_SetRenderDrawColor(renderer, 100, 100, 100, 255);
         SDL_RenderFillRect(renderer,&i);
@@ -135,15 +136,23 @@ void loop() {
     SDL_RenderPresent(renderer);
 }
 int main() {
+
+
+    window = SDL_CreateWindow("SDL + Emscripten", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 600, 0);
+    renderer = SDL_CreateRenderer(window, -1, 0);
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+
     rect.w=50;
     rect.h=50;
     SDL_Init(SDL_INIT_EVERYTHING);
     TTF_Init();
 
-
-    window = SDL_CreateWindow("SDL + Emscripten", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 600, 0);
-    renderer = SDL_CreateRenderer(window, -1, 0);
-
+    SDL_Surface* s=IMG_Load("assets/plr.png");
+    if (!s){
+        std::cerr<<"DIDNT LOAD IMAGE PLAYER\n";
+        return 1;
+    }
+    playertxt=SDL_CreateTextureFromSurface(renderer,s);
 
     arial=TTF_OpenFont("assets/Arialmt.ttf",20);
     if (!arial){
