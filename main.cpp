@@ -5,6 +5,7 @@
 #include <fstream>
 #include <cmath>
 #include <vector>
+#include <tuple>
 #include <emscripten.h>
 
 
@@ -17,6 +18,7 @@ SDL_Texture* playertxt;
 SDL_Texture* walltxt;
 SDL_Texture* bgtxt;
 SDL_Rect rect;
+float delta;
 bool running = true;
 int cur=0;
 int last=0;
@@ -37,6 +39,40 @@ void move(SDL_Rect* rect, int targetX, int targetY, float speed, float delta) {
     rect->x += dx * speed * delta;
     rect->y += dy * speed * delta;
 }
+
+class Weapon{
+    public:
+    int speed;
+    int current_cooldown;
+    int cooldown;
+    size_t mag_size;
+    int ammos;
+    inline static std::vector<std::tuple<SDL_Rect,std::tuple<int,int>,int>> bullets;
+    static void update_all(SDL_Renderer* rend){
+        for (int i=0;i<bullets.size();i++){
+            move(&std::get<0>(bullets[i]),std::get<0>(std::get<1>(bullets[i])),std::get<1>(std::get<1>(bullets[i])),std::get<2>(bullets[i]),delta);
+            SDL_SetRenderDrawColor(rend,255,0,0,255);
+            SDL_RenderFillRect(rend,&std::get<0>(bullets[i]));
+        }
+    }
+    virtual void shoot(SDL_Rect who){};
+};
+
+class Pistol : public Weapon{
+    public:
+    Pistol(int ammos){
+        current_cooldown=0;
+        cooldown=100;
+        mag_size=10;
+        this->ammos=ammos;
+        speed=1000;
+    }
+    void shoot(SDL_Rect who) override{
+        SDL_Rect shrect{who.x,who.y,10,10};
+        auto i=std::make_tuple(shrect,std::make_tuple(who.x,who.y),speed);
+        bullets.push_back(i);
+    }
+};
 
 
 extern "C"{ 
@@ -76,7 +112,7 @@ void save(){
 }
 void loop() {
     cur=SDL_GetTicks();
-    float delta=(cur-last)/1000.f;
+    delta=(cur-last)/1000.f;
     last=cur;
     SDL_Event e;
     int speed=400;
@@ -134,6 +170,7 @@ void loop() {
     for (auto& i:walls){
         SDL_RenderCopy(renderer,walltxt,nullptr,&i);
     }
+    Weapon::update_all(renderer);
     {
         SDL_Rect recto{0,0,100,50};
         SDL_RenderCopy(renderer,safetxt,nullptr,&recto);
