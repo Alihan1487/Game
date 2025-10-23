@@ -86,7 +86,7 @@ void loop() {
         if (e.type == SDL_QUIT)
             running = false;
         if (e.type == SDL_KEYDOWN)
-        if (e.key.keysym.sym == SDLK_s)
+        if (e.key.keysym.sym == SDLK_e)
         if (e.key.keysym.mod & KMOD_SHIFT)
         save();
     }
@@ -145,13 +145,14 @@ int main() {
     renderer = SDL_CreateRenderer(window, -1, 0);
 
 
-    arial=TTF_OpenFont("assets/arialmt.ttf",20);
+    arial=TTF_OpenFont("assets/Arialmt.ttf",20);
     if (!arial){
-        std::cerr<<"FAILED TO LOAD ARIAL";
+        std::cerr<<"FAILED TO LOAD ARIAL\n";
         return 1;
     }
     SDL_Surface* surff=TTF_RenderText_Solid(arial,"saved",SDL_Color{255,255,255,255});
     safetxt=SDL_CreateTextureFromSurface(renderer,surff);
+    SDL_FreeSurface(surff);
 
 
     EM_ASM(

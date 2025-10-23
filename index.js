@@ -64,7 +64,7 @@ var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIR
 
 // --pre-jses are emitted after the Module integration code, so that they can
 // refer to Module (if they choose; they can also define Module)
-// include: /tmp/tmpzpnhc235.js
+// include: /tmp/tmp559mqkse.js
 
   if (!Module['expectedDataFileDownloads']) Module['expectedDataFileDownloads'] = 0;
   Module['expectedDataFileDownloads']++;
@@ -193,25 +193,25 @@ Module['FS_createPath']("/", "assets", true, true);
     }
 
     }
-    loadPackage({"files": [{"filename": "/assets/arialmt.ttf", "start": 0, "end": 409032}], "remote_package_size": 409032});
+    loadPackage({"files": [{"filename": "/assets/Arialmt.ttf", "start": 0, "end": 367112}], "remote_package_size": 367112});
 
   })();
 
-// end include: /tmp/tmpzpnhc235.js
-// include: /tmp/tmppeyyr6v8.js
+// end include: /tmp/tmp559mqkse.js
+// include: /tmp/tmp9udupebe.js
 
     // All the pre-js content up to here must remain later on, we need to run
     // it.
     if ((typeof ENVIRONMENT_IS_WASM_WORKER != 'undefined' && ENVIRONMENT_IS_WASM_WORKER) || (typeof ENVIRONMENT_IS_PTHREAD != 'undefined' && ENVIRONMENT_IS_PTHREAD) || (typeof ENVIRONMENT_IS_AUDIO_WORKLET != 'undefined' && ENVIRONMENT_IS_AUDIO_WORKLET)) Module['preRun'] = [];
     var necessaryPreJSTasks = Module['preRun'].slice();
-  // end include: /tmp/tmppeyyr6v8.js
-// include: /tmp/tmp8i1zcwcu.js
+  // end include: /tmp/tmp9udupebe.js
+// include: /tmp/tmp_bgpp5dc.js
 
     if (!Module['preRun']) throw 'Module.preRun should exist because file support used it; did a pre-js delete it?';
     necessaryPreJSTasks.forEach((task) => {
       if (Module['preRun'].indexOf(task) < 0) throw 'All preRun tasks that exist before user pre-js code should remain after; did you replace Module or modify Module.preRun?';
     });
-  // end include: /tmp/tmp8i1zcwcu.js
+  // end include: /tmp/tmp_bgpp5dc.js
 
 
 var arguments_ = [];
