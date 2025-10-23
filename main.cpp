@@ -14,6 +14,7 @@ SDL_Texture* txt;
 TTF_Font* arial;
 SDL_Texture* safetxt;
 SDL_Texture* playertxt;
+SDL_Texture* walltxt;
 SDL_Rect rect;
 bool running = true;
 int cur=0;
@@ -126,8 +127,7 @@ void loop() {
     SDL_RenderClear(renderer);
     SDL_RenderCopy(renderer,playertxt,nullptr,&rect);
     for (auto& i:walls){
-        SDL_SetRenderDrawColor(renderer, 100, 100, 100, 255);
-        SDL_RenderFillRect(renderer,&i);
+        SDL_RenderCopy(renderer,walltxt,nullptr,&i);
     }
     {
         SDL_Rect recto{0,0,100,50};
@@ -142,17 +142,26 @@ int main() {
     renderer = SDL_CreateRenderer(window, -1, 0);
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 
-    rect.w=50;
-    rect.h=50;
+    rect.w=100;
+    rect.h=100;
     SDL_Init(SDL_INIT_EVERYTHING);
     TTF_Init();
 
     SDL_Surface* s=IMG_Load("assets/plr.png");
     if (!s){
-        std::cerr<<"DIDNT LOAD IMAGE PLAYER\n";
+        std::cerr<<"DIDNT LOAD IMAGE PLAYER BECAUSE:\n"<<IMG_GetError()<<"\n";
         return 1;
     }
     playertxt=SDL_CreateTextureFromSurface(renderer,s);
+    SDL_FreeSurface(s);
+
+    SDL_Surface* su=IMG_Load("assets/wall.png");
+    if (!su){
+        std::cerr<<"DIDNT LOAD IMAGE WALL BECAUSE:\n"<<IMG_GetError()<<"\n";
+        return 1;
+    }
+    walltxt=SDL_CreateTextureFromSurface(renderer,su);
+    SDL_FreeSurface(su);
 
     arial=TTF_OpenFont("assets/Arialmt.ttf",20);
     if (!arial){
