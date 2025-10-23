@@ -22,7 +22,7 @@ int cur=0;
 int last=0;
 int strt=0;
 int alpha=0;
-std::vector<SDL_Rect> walls={SDL_Rect{600,500,150,150}};
+std::vector<SDL_Rect> walls={SDL_Rect{600,500,150,150},SDL_Rect{300,500,150,150},SDL_Rect{400,300,150,150}};
 
 void move(SDL_Rect* rect, int targetX, int targetY, float speed, float delta) {
     float dx = targetX - rect->x;
