@@ -69,7 +69,9 @@ class Pistol : public Weapon{
     }
     void shoot(SDL_Rect who) override{
         SDL_Rect shrect{who.x,who.y,10,10};
-        auto i=std::make_tuple(shrect,std::make_tuple(who.x,who.y),speed);
+        int x,y;
+        Uint32 mstate=SDL_GetMouseState(&x,&y);
+        auto i=std::make_tuple(shrect,std::make_tuple(x,y),speed);
         bullets.push_back(i);
     }
 };
