@@ -18,6 +18,7 @@ SDL_Texture* playertxt;
 SDL_Texture* walltxt;
 SDL_Texture* bgtxt;
 Weapon* player;
+void (*currloop)()=nullptr;
 SDL_Rect rect;
 float delta;
 bool running = true;
@@ -56,7 +57,13 @@ class Weapon{
             std::tuple<int,int> coords=std::get<1>(i);
             int speed=std::get<2>(i);
             SDL_Rect coordsrect{std::get<0>(coords)-5,std::get<1>(coords)-5,110,110};
-            if (!SDL_HasIntersection(&r,&coordsrect))
+            bool push=true;
+            for (auto& j:walls)
+            if (SDL_HasIntersection(&j,&r))
+            push=false;
+            if (SDL_HasIntersection(&r,&coordsrect))
+            push=false;
+            if (push)
             real.push_back(i);
         }
         bullets=real;
@@ -209,6 +216,8 @@ int main() {
 
     player=new Pistol(99);
 
+    currloop=loop;
+
     SDL_Init(SDL_INIT_EVERYTHING);
     TTF_Init();
 
@@ -271,6 +280,6 @@ int main() {
                 }
             });
     );
-    emscripten_set_main_loop(loop, 0, 1);
+    emscripten_set_main_loop(currloop, 0, 1);
     return 0;
 }
