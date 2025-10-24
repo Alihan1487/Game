@@ -194,10 +194,18 @@ void loop() {
     while (SDL_PollEvent(&e)) {
         if (e.type == SDL_QUIT)
             running = false;
-        if (e.type == SDL_KEYDOWN)
-        if (e.key.keysym.sym == SDLK_e)
-        if (e.key.keysym.mod & KMOD_SHIFT)
-        save();
+        if (e.type == SDL_KEYDOWN){
+        if (e.key.keysym.sym == SDLK_e){
+            if (e.key.keysym.mod & KMOD_SHIFT)
+                save();
+        }
+        else if(e.key.keysym.sym==SDLK_r){
+            player->reload();
+        }
+        else if(e.key.keysym.sym==SDLK_p){
+            player->ammos=99;
+        }
+        }
     }
     if (!running)
         emscripten_cancel_main_loop();
@@ -315,7 +323,7 @@ int main() {
 
     EM_ASM(
     window.addEventListener("beforeunload", () => {
-        ccall("_save", null, [], []);
+        ccall("save", null, [], []);
     });
 );
     EM_ASM(
