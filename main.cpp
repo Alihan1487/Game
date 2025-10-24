@@ -19,6 +19,7 @@ SDL_Texture* playertxt;
 SDL_Texture* walltxt;
 SDL_Texture* bgtxt;
 Mix_Chunk* judgment;
+Mix_Chunk* reloadsound;
 Weapon* player;
 SDL_Rect rect;
 float delta;
@@ -56,6 +57,7 @@ void move(SDL_Rect* rect, int targetX, int targetY, float speed, float delta) {
 
 class Weapon{
     public:
+    int inmag;
     int speed;
     float current_cooldown;
     int cooldown;
@@ -68,7 +70,7 @@ class Weapon{
             SDL_Rect r=std::get<0>(i);
             std::tuple<int,int> coords=std::get<1>(i);
             int speed=std::get<2>(i);
-            SDL_Rect coordsrect{std::get<0>(coords)-5,std::get<1>(coords)-5,110,110};
+            SDL_Rect coordsrect{std::get<0>(coords)-5,std::get<1>(coords)-5,15,15};
             bool push=true;
             for (auto& j:walls)
             if (SDL_HasIntersection(&j,&r))
@@ -85,8 +87,11 @@ class Weapon{
             SDL_RenderFillRect(rend,&std::get<0>(bullets[i]));
         }
     }
+    virtual void reload(){};
     virtual void shoot(SDL_Rect who,int x,int y){};
 };
+
+
 
 class Pistol : public Weapon{
     public:
@@ -96,20 +101,37 @@ class Pistol : public Weapon{
         mag_size=10;
         this->ammos=ammos;
         speed=1000;
+        inmag=mag_size;
+    }
+    void reload() override{
+        current_cooldown=2000;
+        Mix_PlayChannel(-1,reloadsound,1);
+        std::cout<<"COOLDOWN\n";
+        inmag=mag_size;
     }
     void shoot(SDL_Rect who,int x,int y) override{
         SDL_Rect shrect{who.x,who.y,10,10};
         if (ammos<=0 || current_cooldown>0)
         return;
-        if (ammos%mag_size==0){
-            current_cooldown=2000;
-            std::cout<<"COOLDOWN\n";
+        if (inmag==0){
+            reload();
         }
         ammos-=1;
+        inmag-=1;
         std::cout<<ammos<<std::endl;
         auto i=std::make_tuple(shrect,std::make_tuple(x,y),speed);
         bullets.push_back(i);
+        Mix_PlayChannel(-1,judgment,0);
         current_cooldown+=cooldown;
+    }
+};
+
+struct WeaponSave{
+    int ammos;
+    int inmag;
+    void LoadToWeapon(Weapon* wep){
+        wep->ammos=ammos;
+        wep->inmag=inmag;
     }
 };
 
@@ -120,13 +142,17 @@ void load(){
     int x=0,y=0;
     std::ifstream file("/save/load.bin",std::ios::binary);
     if (!file.is_open()) {
-        std::cout << "Save not found";
+        std::cout << "Save not found\n";
         rect.x = 100;
         rect.y = 100;
         return;
     }
+    WeaponSave sv{99,10};
     file.read(reinterpret_cast<char*>(&x),sizeof(int));
     file.read(reinterpret_cast<char*>(&y),sizeof(int));
+    file.read(reinterpret_cast<char*>(&sv),sizeof(WeaponSave));
+    std::cout<<sv.ammos<<" "<<sv.inmag<<std::endl;
+    sv.LoadToWeapon(player);
     EM_ASM(
         {console.log($0,$1);},x,y
     );
@@ -139,8 +165,10 @@ extern "C" {
 EMSCRIPTEN_KEEPALIVE
 void save(){
     std::ofstream file("/save/load.bin",std::ios::binary);
+    WeaponSave sv{player->ammos,player->inmag};
     file.write(reinterpret_cast<char*>(&rect.x),sizeof(int));
     file.write(reinterpret_cast<char*>(&rect.y),sizeof(int));
+    file.write(reinterpret_cast<char*>(&sv),sizeof(WeaponSave));
     file.close();
     EM_ASM(
         FS.syncfs(false,function (err){});
@@ -199,7 +227,6 @@ void loop() {
     }
     if (mstate & SDL_BUTTON_LMASK){
         player->shoot(rect,mx,my);
-        Mix_PlayChannel(-1,judgment,0);
     }
     if (player->current_cooldown>0)
     player->current_cooldown-=delta*1000;
@@ -229,7 +256,6 @@ void loop() {
 int main() {
 
     player=new Pistol(99);
-
 
     SDL_Init(SDL_INIT_EVERYTHING);
     TTF_Init();
@@ -275,8 +301,14 @@ int main() {
     safetxt=SDL_CreateTextureFromSurface(renderer,surff);
     SDL_FreeSurface(surff);
 
-    judgment=Mix_LoadWAV("assets/judgement.mp3");
+    judgment=Mix_LoadWAV("assets/shot.wav");
     if (!judgment){
+        std::cerr<<"FAILED TO LOAD JUDGMENT CAUSE:\n"<<Mix_GetError()<<std::endl;
+        return 1;
+    }
+
+    reloadsound=Mix_LoadWAV("assets/reload.wav");
+    if (!reloadsound){
         std::cerr<<"FAILED TO LOAD JUDGMENT CAUSE:\n"<<Mix_GetError()<<std::endl;
         return 1;
     }
