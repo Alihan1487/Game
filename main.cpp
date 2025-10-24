@@ -20,8 +20,7 @@ SDL_Texture* walltxt;
 SDL_Texture* bgtxt;
 Mix_Chunk* judgment;
 Mix_Chunk* reloadsound;
-Weapon* player;
-SDL_Rect rect;
+Mix_Music* bgmus;
 float delta;
 bool running = true;
 int cur=0;
@@ -31,6 +30,24 @@ int alpha=0;
 std::vector<SDL_Rect> walls={SDL_Rect{600,500,150,150},SDL_Rect{300,500,150,150},SDL_Rect{400,300,150,150}};
 
 void loop();
+extern "C" void save();
+
+template <typename T>
+std::vector<T> vremove(std::vector<T> vector,int index){
+    std::vector<T> real;
+    for (int i=0;i<vector.size();i++)
+    if (i!=index)
+    real.push_back(vector[i]);
+    return real;
+}
+template <typename T>
+std::vector<T> vremove(std::vector<T> vector,T element){
+    std::vector<T> real;
+    for (int i=0;i<vector.size();i++)
+    if (vector[i]!=element)
+    real.push_back(vector[i]);
+    return real;
+}
 
 void TakeAgreement(){
     SDL_Event ev;
@@ -126,6 +143,101 @@ class Pistol : public Weapon{
     }
 };
 
+class Sprite{
+    public:
+    SDL_Rect rect;
+    virtual void update(){};
+    virtual void evupdate(SDL_Event ev){};
+};
+
+class Enemy;
+std::vector<Enemy*> enemies;
+
+class Player : public Sprite{
+    public:
+    Weapon* player;
+    Player(SDL_Rect r){
+        rect=r;
+    }
+    Player(){
+        rect={0,0,0,0};
+    }
+    void update() override{
+        int speed=400;
+        const Uint8* k=SDL_GetKeyboardState(NULL);
+        int mx,my;
+        Uint32 mstate=SDL_GetMouseState(&mx,&my);
+        if (k[SDL_SCANCODE_W]){
+        rect.y-=speed*delta;
+        for (auto& i:walls)
+            if (SDL_HasIntersection(&i,&rect))
+                rect.y=i.y+i.h;
+        }
+        if (k[SDL_SCANCODE_S]){
+            rect.y+=speed*delta;
+            for (auto& i:walls)
+                if (SDL_HasIntersection(&i,&rect))
+                    rect.y=i.y-rect.h;
+        }
+        if (k[SDL_SCANCODE_A]){
+            rect.x-=speed*delta;
+            for (auto& i:walls)
+                if (SDL_HasIntersection(&i,&rect))
+                    rect.x=i.x+i.w;
+        }
+        if (k[SDL_SCANCODE_D]){
+            rect.x+=speed*delta;
+            for (auto& i:walls)
+                if (SDL_HasIntersection(&i,&rect))
+                    rect.x=i.x-rect.w;
+        }
+        if (mstate & SDL_BUTTON_LMASK){
+            player->shoot(rect,mx,my);
+        }
+        if (player->current_cooldown>0)
+        player->current_cooldown-=delta*1000;
+        if (player->current_cooldown<0)
+        player->current_cooldown=0;
+        SDL_RenderCopy(renderer,playertxt,nullptr,&rect);
+    }
+    void evupdate(SDL_Event e) override{
+        if (e.type == SDL_KEYDOWN){
+        if (e.key.keysym.sym == SDLK_e){
+            if (e.key.keysym.mod & KMOD_SHIFT)
+                save();
+        }
+        else if(e.key.keysym.sym==SDLK_r){
+            player->reload();
+        }
+        else if(e.key.keysym.sym==SDLK_p){
+            player->ammos=99;
+        }
+        }
+    }
+};
+
+Player me(SDL_Rect{0,0,0,0});
+
+class Enemy : public Sprite{
+    public:
+    Player* p;
+    Enemy(SDL_Rect r,Player* plr){
+        enemies.push_back(this);
+        rect=r;
+        p=plr;
+    }
+    ~Enemy(){
+        vremove<Enemy*>(enemies,this);
+    }
+    void update() override{
+        move(&rect,p->rect.x,p->rect.y,300,delta);
+        SDL_SetRenderDrawColor(renderer,0,0,255,255);
+        SDL_RenderFillRect(renderer,&rect);
+    }
+};
+
+Enemy m(SDL_Rect{100,150,100,100},&me);
+
 struct WeaponSave{
     int ammos;
     int inmag;
@@ -143,8 +255,8 @@ void load(){
     std::ifstream file("/save/load.bin",std::ios::binary);
     if (!file.is_open()) {
         std::cout << "Save not found\n";
-        rect.x = 100;
-        rect.y = 100;
+        me.rect.x = 100;
+        me.rect.y = 100;
         return;
     }
     WeaponSave sv{99,10};
@@ -152,22 +264,22 @@ void load(){
     file.read(reinterpret_cast<char*>(&y),sizeof(int));
     file.read(reinterpret_cast<char*>(&sv),sizeof(WeaponSave));
     std::cout<<sv.ammos<<" "<<sv.inmag<<std::endl;
-    sv.LoadToWeapon(player);
+    sv.LoadToWeapon(me.player);
     EM_ASM(
         {console.log($0,$1);},x,y
     );
     file.close();
-    rect.x=x;
-    rect.y=y;
+    me.rect.x=x;
+    me.rect.y=y;
 }
 }
 extern "C" {
 EMSCRIPTEN_KEEPALIVE
 void save(){
     std::ofstream file("/save/load.bin",std::ios::binary);
-    WeaponSave sv{player->ammos,player->inmag};
-    file.write(reinterpret_cast<char*>(&rect.x),sizeof(int));
-    file.write(reinterpret_cast<char*>(&rect.y),sizeof(int));
+    WeaponSave sv{me.player->ammos,me.player->inmag};
+    file.write(reinterpret_cast<char*>(&me.rect.x),sizeof(int));
+    file.write(reinterpret_cast<char*>(&me.rect.y),sizeof(int));
     file.write(reinterpret_cast<char*>(&sv),sizeof(WeaponSave));
     file.close();
     EM_ASM(
@@ -182,10 +294,6 @@ void loop() {
     delta=(cur-last)/1000.f;
     last=cur;
     SDL_Event e;
-    int speed=400;
-    const Uint8* k=SDL_GetKeyboardState(NULL);
-    int mx,my;
-    Uint32 mstate=SDL_GetMouseState(&mx,&my);
     if (alpha>0)
     alpha-=100*delta;
     if (alpha<0)
@@ -194,52 +302,10 @@ void loop() {
     while (SDL_PollEvent(&e)) {
         if (e.type == SDL_QUIT)
             running = false;
-        if (e.type == SDL_KEYDOWN){
-        if (e.key.keysym.sym == SDLK_e){
-            if (e.key.keysym.mod & KMOD_SHIFT)
-                save();
-        }
-        else if(e.key.keysym.sym==SDLK_r){
-            player->reload();
-        }
-        else if(e.key.keysym.sym==SDLK_p){
-            player->ammos=99;
-        }
-        }
+        me.evupdate(e);
     }
     if (!running)
         emscripten_cancel_main_loop();
-    if (k[SDL_SCANCODE_W]){
-        rect.y-=speed*delta;
-        for (auto& i:walls)
-            if (SDL_HasIntersection(&i,&rect))
-                rect.y=i.y+i.h;
-    }
-    if (k[SDL_SCANCODE_S]){
-        rect.y+=speed*delta;
-        for (auto& i:walls)
-            if (SDL_HasIntersection(&i,&rect))
-                rect.y=i.y-rect.h;
-    }
-    if (k[SDL_SCANCODE_A]){
-        rect.x-=speed*delta;
-        for (auto& i:walls)
-            if (SDL_HasIntersection(&i,&rect))
-                rect.x=i.x+i.w;
-    }
-    if (k[SDL_SCANCODE_D]){
-        rect.x+=speed*delta;
-        for (auto& i:walls)
-            if (SDL_HasIntersection(&i,&rect))
-                rect.x=i.x-rect.w;
-    }
-    if (mstate & SDL_BUTTON_LMASK){
-        player->shoot(rect,mx,my);
-    }
-    if (player->current_cooldown>0)
-    player->current_cooldown-=delta*1000;
-    if (player->current_cooldown<0)
-    player->current_cooldown=0;
     if ((cur-strt>30000)){
         save();
         strt=cur;
@@ -250,7 +316,6 @@ void loop() {
         SDL_Rect win{0,0,w,h};
         SDL_RenderCopy(renderer,bgtxt,nullptr,&win);
     }
-    SDL_RenderCopy(renderer,playertxt,nullptr,&rect);
     for (auto& i:walls){
         SDL_RenderCopy(renderer,walltxt,nullptr,&i);
     }
@@ -259,11 +324,13 @@ void loop() {
         SDL_Rect recto{0,0,100,50};
         SDL_RenderCopy(renderer,safetxt,nullptr,&recto);
     }
+    me.update();
+    m.update();
     SDL_RenderPresent(renderer);
 }
 int main() {
 
-    player=new Pistol(99);
+    me.player=new Pistol(99);
 
     SDL_Init(SDL_INIT_EVERYTHING);
     TTF_Init();
@@ -273,8 +340,8 @@ int main() {
     renderer = SDL_CreateRenderer(window, -1, 0);
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 
-    rect.w=100;
-    rect.h=100;
+    me.rect.w=100;
+    me.rect.h=100;
 
     SDL_Surface* s=IMG_Load("assets/plr.png");
     if (!s){
@@ -311,13 +378,19 @@ int main() {
 
     judgment=Mix_LoadWAV("assets/shot.wav");
     if (!judgment){
-        std::cerr<<"FAILED TO LOAD JUDGMENT CAUSE:\n"<<Mix_GetError()<<std::endl;
+        std::cerr<<"FAILED TO LOAD SHOT CAUSE:\n"<<Mix_GetError()<<std::endl;
         return 1;
     }
 
     reloadsound=Mix_LoadWAV("assets/reload.wav");
     if (!reloadsound){
-        std::cerr<<"FAILED TO LOAD JUDGMENT CAUSE:\n"<<Mix_GetError()<<std::endl;
+        std::cerr<<"FAILED TO LOAD RELOAD CAUSE:\n"<<Mix_GetError()<<std::endl;
+        return 1;
+    }
+
+    bgmus=Mix_LoadMUS("assets/versus.wav");
+    if (!bgmus){
+        std::cerr<<"FAILED TO LOAD VERSUS CAUSE:\n"<<Mix_GetError()<<std::endl;
         return 1;
     }
 
@@ -339,6 +412,7 @@ int main() {
                 }
             });
     );
+    Mix_PlayMusic(bgmus,-1);
     emscripten_set_main_loop(loop, 0, 1);
     return 0;
 }
