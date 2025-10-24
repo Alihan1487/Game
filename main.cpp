@@ -1,5 +1,6 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
+#include <SDL2/SDL_mixer.h>
 #include <SDL2/SDL_image.h>
 #include <iostream>
 #include <fstream>
@@ -17,8 +18,8 @@ SDL_Texture* safetxt;
 SDL_Texture* playertxt;
 SDL_Texture* walltxt;
 SDL_Texture* bgtxt;
+Mix_Chunk* judgment;
 Weapon* player;
-void (*currloop)()=nullptr;
 SDL_Rect rect;
 float delta;
 bool running = true;
@@ -27,6 +28,17 @@ int last=0;
 int strt=0;
 int alpha=0;
 std::vector<SDL_Rect> walls={SDL_Rect{600,500,150,150},SDL_Rect{300,500,150,150},SDL_Rect{400,300,150,150}};
+
+void loop();
+
+void TakeAgreement(){
+    SDL_Event ev;
+    while (SDL_PollEvent(&ev)){
+        if (ev.type==SDL_MOUSEBUTTONDOWN)
+        emscripten_cancel_main_loop();
+        emscripten_set_main_loop(loop,0,1);
+    }
+}
 
 void move(SDL_Rect* rect, int targetX, int targetY, float speed, float delta) {
     float dx = targetX - rect->x;
@@ -185,8 +197,10 @@ void loop() {
             if (SDL_HasIntersection(&i,&rect))
                 rect.x=i.x-rect.w;
     }
-    if (mstate & SDL_BUTTON_LMASK)
-    player->shoot(rect,mx,my);
+    if (mstate & SDL_BUTTON_LMASK){
+        player->shoot(rect,mx,my);
+        Mix_PlayChannel(-1,judgment,0);
+    }
     if (player->current_cooldown>0)
     player->current_cooldown-=delta*1000;
     if (player->current_cooldown<0)
@@ -216,10 +230,10 @@ int main() {
 
     player=new Pistol(99);
 
-    currloop=loop;
 
     SDL_Init(SDL_INIT_EVERYTHING);
     TTF_Init();
+    Mix_OpenAudio(44100,MIX_DEFAULT_FORMAT,2,2048);
 
     window = SDL_CreateWindow("SDL + Emscripten", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 600, 0);
     renderer = SDL_CreateRenderer(window, -1, 0);
@@ -261,6 +275,11 @@ int main() {
     safetxt=SDL_CreateTextureFromSurface(renderer,surff);
     SDL_FreeSurface(surff);
 
+    judgment=Mix_LoadWAV("assets/judgement.mp3");
+    if (!judgment){
+        std::cerr<<"FAILED TO LOAD JUDGMENT CAUSE:\n"<<Mix_GetError()<<std::endl;
+        return 1;
+    }
 
     EM_ASM(
     window.addEventListener("beforeunload", () => {
@@ -280,6 +299,6 @@ int main() {
                 }
             });
     );
-    emscripten_set_main_loop(currloop, 0, 1);
+    emscripten_set_main_loop(loop, 0, 1);
     return 0;
 }
