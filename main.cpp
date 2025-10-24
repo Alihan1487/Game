@@ -55,7 +55,7 @@ class Weapon{
             SDL_Rect r=std::get<0>(i);
             std::tuple<int,int> coords=std::get<1>(i);
             int speed=std::get<2>(i);
-            SDL_Rect coordsrect{std::get<0>(coords)-50,std::get<0>(coords)-50,150,150};
+            SDL_Rect coordsrect{std::get<0>(coords)-5,std::get<1>(coords)-5,110,110};
             if (!SDL_HasIntersection(&r,&coordsrect))
             real.push_back(i);
         }
@@ -73,23 +73,24 @@ class Pistol : public Weapon{
     public:
     Pistol(int ammos){
         current_cooldown=0;
-        cooldown=100;
+        cooldown=500;
         mag_size=10;
         this->ammos=ammos;
         speed=1000;
     }
     void shoot(SDL_Rect who,int x,int y) override{
         SDL_Rect shrect{who.x,who.y,10,10};
-        if (ammos==0){
-            ammos=mag_size;
-            ammos-=mag_size;
-            cooldown=2000;
+        if (ammos<=0 || current_cooldown>0)
+        return;
+        if (ammos%mag_size==0){
+            current_cooldown=2000;
+            std::cout<<"COOLDOWN\n";
         }
-        if (current_cooldown==0){
-            auto i=std::make_tuple(shrect,std::make_tuple(x,y),speed);
-            bullets.push_back(i);
-            current_cooldown+=cooldown;
-        }
+        ammos-=1;
+        std::cout<<ammos<<std::endl;
+        auto i=std::make_tuple(shrect,std::make_tuple(x,y),speed);
+        bullets.push_back(i);
+        current_cooldown+=cooldown;
     }
 };
 
@@ -180,7 +181,7 @@ void loop() {
     if (mstate & SDL_BUTTON_LMASK)
     player->shoot(rect,mx,my);
     if (player->current_cooldown>0)
-    player->current_cooldown-=delta;
+    player->current_cooldown-=delta*1000;
     if (player->current_cooldown<0)
     player->current_cooldown=0;
     if ((cur-strt>30000)){
@@ -206,7 +207,7 @@ void loop() {
 }
 int main() {
 
-    player=new Pistol(40);
+    player=new Pistol(99);
 
     SDL_Init(SDL_INIT_EVERYTHING);
     TTF_Init();
