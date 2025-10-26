@@ -238,6 +238,12 @@ class Enemy : public Sprite{
 
 Enemy m(SDL_Rect{100,150,100,100},&me);
 
+class Scene{
+    Player* me;
+    std::vector<Sprite*> sprites;
+    virtual void update(){};
+}
+
 struct WeaponSave{
     int ammos;
     int inmag;
