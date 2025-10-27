@@ -227,7 +227,7 @@ class Enemy : public Sprite{
         p=plr;
     }
     ~Enemy(){
-        vremove<Enemy*>(enemies,this);
+     enemies=vremove<Enemy*>(enemies,this);
     }
     void update() override{
         move(&rect,p->rect.x,p->rect.y,300,delta);
