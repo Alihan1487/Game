@@ -27,7 +27,6 @@ int cur=0;
 int last=0;
 int strt=0;
 int alpha=0;
-std::vector<SDL_Rect> walls={SDL_Rect{600,500,150,150},SDL_Rect{300,500,150,150},SDL_Rect{400,300,150,150}};
 
 void loop();
 extern "C" void save();
@@ -81,29 +80,7 @@ class Weapon{
     size_t mag_size;
     int ammos;
     inline static std::vector<std::tuple<SDL_Rect,std::tuple<int,int>,int>> bullets;
-    static void update_all(SDL_Renderer* rend){
-        std::vector<std::tuple<SDL_Rect,std::tuple<int,int>,int>> real;
-        for (auto i:bullets){
-            SDL_Rect r=std::get<0>(i);
-            std::tuple<int,int> coords=std::get<1>(i);
-            int speed=std::get<2>(i);
-            SDL_Rect coordsrect{std::get<0>(coords)-5,std::get<1>(coords)-5,15,15};
-            bool push=true;
-            for (auto& j:walls)
-            if (SDL_HasIntersection(&j,&r))
-            push=false;
-            if (SDL_HasIntersection(&r,&coordsrect))
-            push=false;
-            if (push)
-            real.push_back(i);
-        }
-        bullets=real;
-        for (int i=0;i<bullets.size();i++){
-            move(&std::get<0>(bullets[i]),std::get<0>(std::get<1>(bullets[i])),std::get<1>(std::get<1>(bullets[i])),std::get<2>(bullets[i]),delta);
-            SDL_SetRenderDrawColor(rend,255,0,0,255);
-            SDL_RenderFillRect(rend,&std::get<0>(bullets[i]));
-        }
-    }
+    static void update_all(SDL_Renderer* rend);
     virtual void reload(){};
     virtual void shoot(SDL_Rect who,int x,int y){};
 };
@@ -150,17 +127,86 @@ class Sprite{
     virtual void evupdate(SDL_Event ev){};
 };
 
+namespace MainS{
+    std::vector<Sprite*> sprites;
+}
+
+class Wall : public Sprite{
+    public:
+    Wall(SDL_Rect r){
+        rect=r;
+        MainS::sprites.push_back(this);
+    }
+    void update() override{
+        SDL_RenderCopy(renderer,walltxt,nullptr,&rect);
+    }
+};
+
+namespace MainS{
+    std::vector<Wall*> walls;
+}
+
+void Weapon::update_all(SDL_Renderer* rend){
+    std::vector<std::tuple<SDL_Rect,std::tuple<int,int>,int>> real;
+    for (auto i:bullets){
+        SDL_Rect r=std::get<0>(i);
+        std::tuple<int,int> coords=std::get<1>(i);
+        int speed=std::get<2>(i);
+        SDL_Rect coordsrect{std::get<0>(coords)-5,std::get<1>(coords)-5,15,15};
+        bool push=true;
+        for (auto& j:MainS::walls)
+        if (SDL_HasIntersection(&j->rect,&r))
+        push=false;
+        if (SDL_HasIntersection(&r,&coordsrect))
+        push=false;
+        if (push)
+        real.push_back(i);
+    }
+    bullets=real;
+    for (int i=0;i<bullets.size();i++){
+        move(&std::get<0>(bullets[i]),std::get<0>(std::get<1>(bullets[i])),std::get<1>(std::get<1>(bullets[i])),std::get<2>(bullets[i]),delta);
+        SDL_SetRenderDrawColor(rend,255,0,0,255);
+        SDL_RenderFillRect(rend,&std::get<0>(bullets[i]));
+    }
+}
+
 class Enemy;
-std::vector<Enemy*> enemies;
+namespace MainS{
+    std::vector<Enemy*> enemies;
+}
 
 class Player : public Sprite{
     public:
+    int rx=0,ry=0;
+
     Weapon* player;
     Player(SDL_Rect r){
         rect=r;
     }
     Player(){
         rect={0,0,0,0};
+    }
+    void move(int dx,int dy){
+        for (auto i:MainS::sprites){
+            i->rect.x+=dx;
+            i->rect.y+=dy;
+        }
+        rx+=dx;
+        ry+=dy;
+    }
+    void setX(int x){
+        if (x>rx)
+            move(x-rx,0);
+        else if (x<rx)
+            move(x-rx,0);
+        rx=x;
+    }
+    void setY(int y){
+        if (y>ry)
+            move(y-ry,0);
+        else if (y<ry)
+            move(y-ry,0);
+        ry=y;
     }
     void update() override{
         int speed=400;
@@ -169,27 +215,27 @@ class Player : public Sprite{
         Uint32 mstate=SDL_GetMouseState(&mx,&my);
         if (k[SDL_SCANCODE_W]){
         rect.y-=speed*delta;
-        for (auto& i:walls)
-            if (SDL_HasIntersection(&i,&rect))
-                rect.y=i.y+i.h;
+        for (auto i:MainS::walls)
+            if (SDL_HasIntersection(&i->rect,&rect))
+                rect.y=i->rect.y+i->rect.h;
         }
         if (k[SDL_SCANCODE_S]){
             rect.y+=speed*delta;
-            for (auto& i:walls)
-                if (SDL_HasIntersection(&i,&rect))
-                    rect.y=i.y-rect.h;
+            for (auto i:MainS::walls)
+                if (SDL_HasIntersection(&i->rect,&rect))
+                    rect.y=i->rect.y-rect.h;
         }
         if (k[SDL_SCANCODE_A]){
             rect.x-=speed*delta;
-            for (auto& i:walls)
-                if (SDL_HasIntersection(&i,&rect))
-                    rect.x=i.x+i.w;
+            for (auto i:MainS::walls)
+                if (SDL_HasIntersection(&i->rect,&rect))
+                    rect.x=i->rect.x+i->rect.w;
         }
         if (k[SDL_SCANCODE_D]){
             rect.x+=speed*delta;
-            for (auto& i:walls)
-                if (SDL_HasIntersection(&i,&rect))
-                    rect.x=i.x-rect.w;
+            for (auto i:MainS::walls)
+                if (SDL_HasIntersection(&i->rect,&rect))
+                    rect.x=i->rect.x-rect.w;
         }
         if (mstate & SDL_BUTTON_LMASK){
             player->shoot(rect,mx,my);
@@ -216,18 +262,21 @@ class Player : public Sprite{
     }
 };
 
-Player me(SDL_Rect{0,0,0,0});
+namespace MainS{
+    Player me(SDL_Rect{0,0,0,0});
+}
 
 class Enemy : public Sprite{
     public:
     Player* p;
     Enemy(SDL_Rect r,Player* plr){
-        enemies.push_back(this);
+        MainS::enemies.push_back(this);
+        MainS::sprites.push_back(this);
         rect=r;
         p=plr;
     }
     ~Enemy(){
-     enemies=vremove<Enemy*>(enemies,this);
+        MainS::enemies=vremove<Enemy*>(MainS::enemies,this);
     }
     void update() override{
         move(&rect,p->rect.x,p->rect.y,300,delta);
@@ -236,12 +285,8 @@ class Enemy : public Sprite{
     }
 };
 
-Enemy m(SDL_Rect{100,150,100,100},&me);
-
-class Scene{
-    Player* me;
-    std::vector<Sprite*> sprites;
-    virtual void update(){};
+namespace MainS{
+    Enemy m(SDL_Rect{100,150,100,100},&me);
 }
 
 struct WeaponSave{
@@ -261,8 +306,8 @@ void load(){
     std::ifstream file("/save/load.bin",std::ios::binary);
     if (!file.is_open()) {
         std::cout << "Save not found\n";
-        me.rect.x = 100;
-        me.rect.y = 100;
+        MainS::me.rect.x = 100;
+        MainS::me.rect.y = 100;
         return;
     }
     WeaponSave sv{99,10};
@@ -270,22 +315,22 @@ void load(){
     file.read(reinterpret_cast<char*>(&y),sizeof(int));
     file.read(reinterpret_cast<char*>(&sv),sizeof(WeaponSave));
     std::cout<<sv.ammos<<" "<<sv.inmag<<std::endl;
-    sv.LoadToWeapon(me.player);
+    sv.LoadToWeapon(MainS::me.player);
     EM_ASM(
         {console.log($0,$1);},x,y
     );
     file.close();
-    me.rect.x=x;
-    me.rect.y=y;
+    MainS::me.rect.x=x;
+    MainS::me.rect.y=y;
 }
 }
 extern "C" {
 EMSCRIPTEN_KEEPALIVE
 void save(){
     std::ofstream file("/save/load.bin",std::ios::binary);
-    WeaponSave sv{me.player->ammos,me.player->inmag};
-    file.write(reinterpret_cast<char*>(&me.rect.x),sizeof(int));
-    file.write(reinterpret_cast<char*>(&me.rect.y),sizeof(int));
+    WeaponSave sv{MainS::me.player->ammos,MainS::me.player->inmag};
+    file.write(reinterpret_cast<char*>(&MainS::me.rect.x),sizeof(int));
+    file.write(reinterpret_cast<char*>(&MainS::me.rect.y),sizeof(int));
     file.write(reinterpret_cast<char*>(&sv),sizeof(WeaponSave));
     file.close();
     EM_ASM(
@@ -308,7 +353,7 @@ void loop() {
     while (SDL_PollEvent(&e)) {
         if (e.type == SDL_QUIT)
             running = false;
-        me.evupdate(e);
+        MainS::me.evupdate(e);
     }
     if (!running)
         emscripten_cancel_main_loop();
@@ -322,21 +367,23 @@ void loop() {
         SDL_Rect win{0,0,w,h};
         SDL_RenderCopy(renderer,bgtxt,nullptr,&win);
     }
-    for (auto& i:walls){
-        SDL_RenderCopy(renderer,walltxt,nullptr,&i);
-    }
+    for (auto i:MainS::walls)
+        i->update();
     Weapon::update_all(renderer);
     {
         SDL_Rect recto{0,0,100,50};
         SDL_RenderCopy(renderer,safetxt,nullptr,&recto);
     }
-    me.update();
-    m.update();
+    MainS::me.update();
+    MainS::m.update();
     SDL_RenderPresent(renderer);
 }
 int main() {
 
-    me.player=new Pistol(99);
+    MainS::me.player=new Pistol(99);
+
+    Wall w(SDL_Rect{300,300,100,100});
+    MainS::walls.push_back(&w);
 
     SDL_Init(SDL_INIT_EVERYTHING);
     TTF_Init();
@@ -346,8 +393,8 @@ int main() {
     renderer = SDL_CreateRenderer(window, -1, 0);
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 
-    me.rect.w=100;
-    me.rect.h=100;
+    MainS::me.rect.w=100;
+    MainS::me.rect.h=100;
 
     SDL_Surface* s=IMG_Load("assets/plr.png");
     if (!s){
