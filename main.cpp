@@ -71,6 +71,8 @@ void move(SDL_Rect* rect, int targetX, int targetY, float speed, float delta) {
     rect->y += dy * speed * delta;
 }
 
+class Wall;
+
 class Weapon{
     public:
     int inmag;
@@ -80,7 +82,7 @@ class Weapon{
     size_t mag_size;
     int ammos;
     inline static std::vector<std::tuple<SDL_Rect,std::tuple<int,int>,int>> bullets;
-    static void update_all(SDL_Renderer* rend);
+    static void update_all(SDL_Renderer* rend,std::vector<Wall*> walls);
     virtual void reload(){};
     virtual void shoot(SDL_Rect who,int x,int y){};
 };
@@ -146,7 +148,7 @@ namespace MainS{
     std::vector<Wall*> walls;
 }
 
-void Weapon::update_all(SDL_Renderer* rend){
+void Weapon::update_all(SDL_Renderer* rend,std::vector<Wall*> walls){
     std::vector<std::tuple<SDL_Rect,std::tuple<int,int>,int>> real;
     for (auto i:bullets){
         SDL_Rect r=std::get<0>(i);
@@ -154,7 +156,7 @@ void Weapon::update_all(SDL_Renderer* rend){
         int speed=std::get<2>(i);
         SDL_Rect coordsrect{std::get<0>(coords)-5,std::get<1>(coords)-5,15,15};
         bool push=true;
-        for (auto& j:MainS::walls)
+        for (auto j:walls)
         if (SDL_HasIntersection(&j->rect,&r))
         push=false;
         if (SDL_HasIntersection(&r,&coordsrect))
@@ -178,10 +180,11 @@ namespace MainS{
 class Player : public Sprite{
     public:
     int rx=0,ry=0;
-
+    std::vector<Wall*> walls;
     Weapon* player;
-    Player(SDL_Rect r){
+    Player(SDL_Rect r,std::vector<Wall*> walls){
         rect=r;
+        this->walls=walls;
     }
     Player(){
         rect={0,0,0,0};
@@ -215,25 +218,25 @@ class Player : public Sprite{
         Uint32 mstate=SDL_GetMouseState(&mx,&my);
         if (k[SDL_SCANCODE_W]){
         rect.y-=speed*delta;
-        for (auto i:MainS::walls)
+        for (auto i:walls)
             if (SDL_HasIntersection(&i->rect,&rect))
                 rect.y=i->rect.y+i->rect.h;
         }
         if (k[SDL_SCANCODE_S]){
             rect.y+=speed*delta;
-            for (auto i:MainS::walls)
+            for (auto i:walls)
                 if (SDL_HasIntersection(&i->rect,&rect))
                     rect.y=i->rect.y-rect.h;
         }
         if (k[SDL_SCANCODE_A]){
             rect.x-=speed*delta;
-            for (auto i:MainS::walls)
+            for (auto i:walls)
                 if (SDL_HasIntersection(&i->rect,&rect))
                     rect.x=i->rect.x+i->rect.w;
         }
         if (k[SDL_SCANCODE_D]){
             rect.x+=speed*delta;
-            for (auto i:MainS::walls)
+            for (auto i:walls)
                 if (SDL_HasIntersection(&i->rect,&rect))
                     rect.x=i->rect.x-rect.w;
         }
@@ -263,7 +266,7 @@ class Player : public Sprite{
 };
 
 namespace MainS{
-    Player me(SDL_Rect{0,0,0,0});
+    Player me(SDL_Rect{0,0,0,0},walls);
 }
 
 class Enemy : public Sprite{
@@ -369,7 +372,7 @@ void loop() {
     }
     for (auto i:MainS::walls)
         i->update();
-    Weapon::update_all(renderer);
+    Weapon::update_all(renderer,MainS::walls);
     {
         SDL_Rect recto{0,0,100,50};
         SDL_RenderCopy(renderer,safetxt,nullptr,&recto);
