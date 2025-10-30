@@ -180,9 +180,9 @@ namespace MainS{
 class Player : public Sprite{
     public:
     int rx=0,ry=0;
-    std::vector<Wall*> walls;
+    std::vector<Wall*> *walls;
     Weapon* player;
-    Player(SDL_Rect r,std::vector<Wall*> walls){
+    Player(SDL_Rect r,std::vector<Wall*> *walls){
         rect=r;
         this->walls=walls;
     }
@@ -218,25 +218,25 @@ class Player : public Sprite{
         Uint32 mstate=SDL_GetMouseState(&mx,&my);
         if (k[SDL_SCANCODE_W]){
         rect.y-=speed*delta;
-        for (auto i:walls)
+        for (auto i:*walls)
             if (SDL_HasIntersection(&i->rect,&rect))
                 rect.y=i->rect.y+i->rect.h;
         }
         if (k[SDL_SCANCODE_S]){
             rect.y+=speed*delta;
-            for (auto i:walls)
+            for (auto i:*walls)
                 if (SDL_HasIntersection(&i->rect,&rect))
                     rect.y=i->rect.y-rect.h;
         }
         if (k[SDL_SCANCODE_A]){
             rect.x-=speed*delta;
-            for (auto i:walls)
+            for (auto i:*walls)
                 if (SDL_HasIntersection(&i->rect,&rect))
                     rect.x=i->rect.x+i->rect.w;
         }
         if (k[SDL_SCANCODE_D]){
             rect.x+=speed*delta;
-            for (auto i:walls)
+            for (auto i:*walls)
                 if (SDL_HasIntersection(&i->rect,&rect))
                     rect.x=i->rect.x-rect.w;
         }
@@ -266,7 +266,7 @@ class Player : public Sprite{
 };
 
 namespace MainS{
-    Player me(SDL_Rect{0,0,0,0},walls);
+    Player me(SDL_Rect{0,0,0,0},&walls);
 }
 
 class Enemy : public Sprite{
