@@ -1,0 +1,13 @@
+%clang
+%cpp -std=c++17
+
+# пути для SDL и Emscripten
+-I/usr/include
+-I/usr/local/include
+-I/workspaces/Game/emsdk/upstream/emscripten/system/include
+-I/workspaces/Game/emsdk/upstream/emscripten/system/include/libc
+-I/workspaces/Game/emsdk/upstream/emscripten/system/include/libcxx
+-I/workspaces/Game/emsdk/upstream/emscripten/system/include/SDL2
+
+# если нужно, можно определить макрос
+-D__EMSCRIPTEN__

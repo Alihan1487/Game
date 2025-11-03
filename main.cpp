@@ -27,6 +27,7 @@ int cur=0;
 int last=0;
 int strt=0;
 int alpha=0;
+int sno=0;
 
 void loop();
 extern "C" void save();
@@ -129,24 +130,18 @@ class Sprite{
     virtual void evupdate(SDL_Event ev){};
 };
 
-namespace MainS{
-    std::vector<Sprite*> sprites;
-}
-
 class Wall : public Sprite{
     public:
-    Wall(SDL_Rect r){
+    std::vector<Sprite*> *sprites;
+    Wall(SDL_Rect r,std::vector<Sprite*> *s){
         rect=r;
-        MainS::sprites.push_back(this);
+        s->push_back(this);
+        sprites=s;
     }
     void update() override{
         SDL_RenderCopy(renderer,walltxt,nullptr,&rect);
     }
 };
-
-namespace MainS{
-    std::vector<Wall*> walls;
-}
 
 void Weapon::update_all(SDL_Renderer* rend,std::vector<Wall*> walls){
     std::vector<std::tuple<SDL_Rect,std::tuple<int,int>,int>> real;
@@ -173,24 +168,24 @@ void Weapon::update_all(SDL_Renderer* rend,std::vector<Wall*> walls){
 }
 
 class Enemy;
-namespace MainS{
-    std::vector<Enemy*> enemies;
-}
+    
 
 class Player : public Sprite{
     public:
     int rx=0,ry=0;
     std::vector<Wall*> *walls;
+    std::vector<Sprite*> *sprites;
     Weapon* player;
-    Player(SDL_Rect r,std::vector<Wall*> *walls){
+    Player(SDL_Rect r,std::vector<Wall*> *walls,std::vector<Sprite*> *s){
         rect=r;
         this->walls=walls;
+        sprites=s;
     }
     Player(){
         rect={0,0,0,0};
     }
     void move(int dx,int dy){
-        for (auto i:MainS::sprites){
+        for (auto i:*sprites){
             i->rect.x+=dx;
             i->rect.y+=dy;
         }
@@ -265,21 +260,25 @@ class Player : public Sprite{
     }
 };
 
-namespace MainS{
-    Player me(SDL_Rect{0,0,0,0},&walls);
-}
-
 class Enemy : public Sprite{
     public:
     Player* p;
-    Enemy(SDL_Rect r,Player* plr){
-        MainS::enemies.push_back(this);
-        MainS::sprites.push_back(this);
+    std::vector<Enemy*> *e;
+    std::vector<Sprite*> *s;
+    Enemy(SDL_Rect r,Player* plr,std::vector<Enemy*> *enemies,std::vector<Sprite*> *sprites){
+        enemies->push_back(this);
+        sprites->push_back(this);
+        e=enemies;
+        s=sprites;
         rect=r;
         p=plr;
     }
+    Enemy(){
+        rect={0,0,0,0};
+        p=nullptr;
+    }
     ~Enemy(){
-        MainS::enemies=vremove<Enemy*>(MainS::enemies,this);
+        *e=vremove<Enemy*>(*e,this);
     }
     void update() override{
         move(&rect,p->rect.x,p->rect.y,300,delta);
@@ -287,10 +286,6 @@ class Enemy : public Sprite{
         SDL_RenderFillRect(renderer,&rect);
     }
 };
-
-namespace MainS{
-    Enemy m(SDL_Rect{100,150,100,100},&me);
-}
 
 struct WeaponSave{
     int ammos;
@@ -301,12 +296,29 @@ struct WeaponSave{
     }
 };
 
+class MainS{
+    public:
+    inline static std::vector<Wall*> walls;
+    inline static Player me;
+    inline static std::vector<Sprite*> sprites;
+    inline static std::vector<Enemy*> enemies;
+    inline static Enemy m;
+    static void init(){
+        me=Player(SDL_Rect{0,0,0,0},&walls,&sprites);
+        enemies.push_back(&m);
+        sprites.push_back(&m);
+        m.rect={100,100,200,200};
+        m.p=&me;
+    }
+};
 
 extern "C"{ 
 EMSCRIPTEN_KEEPALIVE
-void load(){
-    int x=0,y=0;
+void load(int no){
     std::ifstream file("/save/load.bin",std::ios::binary);
+    file.read(reinterpret_cast<char*>(&sno),sizeof(int));
+    if (sno==0){
+    int x=0,y=0;
     if (!file.is_open()) {
         std::cout << "Save not found\n";
         MainS::me.rect.x = 100;
@@ -327,10 +339,13 @@ void load(){
     MainS::me.rect.y=y;
 }
 }
+}
 extern "C" {
 EMSCRIPTEN_KEEPALIVE
 void save(){
     std::ofstream file("/save/load.bin",std::ios::binary);
+    file.write(reinterpret_cast<char*>(&sno),sizeof(int));
+    if (sno==0){
     WeaponSave sv{MainS::me.player->ammos,MainS::me.player->inmag};
     file.write(reinterpret_cast<char*>(&MainS::me.rect.x),sizeof(int));
     file.write(reinterpret_cast<char*>(&MainS::me.rect.y),sizeof(int));
@@ -343,6 +358,8 @@ void save(){
     alpha=255;
 }
 }
+}
+
 void loop() {
     cur=SDL_GetTicks();
     delta=(cur-last)/1000.f;
@@ -381,23 +398,25 @@ void loop() {
     MainS::m.update();
     SDL_RenderPresent(renderer);
 }
+
+
+
 int main() {
-
-    MainS::me.player=new Pistol(99);
-
-    Wall w(SDL_Rect{300,300,100,100});
-    MainS::walls.push_back(&w);
 
     SDL_Init(SDL_INIT_EVERYTHING);
     TTF_Init();
     Mix_OpenAudio(44100,MIX_DEFAULT_FORMAT,2,2048);
+    
+    MainS::init();
+    MainS::me.player=new Pistol(99);
+    Wall w(SDL_Rect{300,300,100,100},&MainS::sprites);
+    MainS::walls.push_back(&w);
+    MainS::me.rect.w=100;
+    MainS::me.rect.h=100;
 
     window = SDL_CreateWindow("SDL + Emscripten", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 600, 0);
     renderer = SDL_CreateRenderer(window, -1, 0);
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-
-    MainS::me.rect.w=100;
-    MainS::me.rect.h=100;
 
     SDL_Surface* s=IMG_Load("assets/plr.png");
     if (!s){
@@ -449,12 +468,6 @@ int main() {
         std::cerr<<"FAILED TO LOAD VERSUS CAUSE:\n"<<Mix_GetError()<<std::endl;
         return 1;
     }
-
-    EM_ASM(
-    window.addEventListener("beforeunload", () => {
-        ccall("save", null, [], []);
-    });
-);
     EM_ASM(
             FS.mkdir("/save");
             FS.mount(IDBFS,{},"/save");
@@ -464,7 +477,7 @@ int main() {
                 }
                 else{
                     console.log("loading");
-                    _load();
+                    _load(0);
                 }
             });
     );
