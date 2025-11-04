@@ -10,6 +10,8 @@ emcc main.cpp \
 -s SDL2_MIXER_FORMATS='["wav"]' \
 -s FORCE_FILESYSTEM=1 \
 --embed-file assets@/assets \
+-O3 \
+-s MINIFY_HTML=0 \
 -s INITIAL_MEMORY=64MB \
 -s MAXIMUM_MEMORY=256MB \
 -s ALLOW_MEMORY_GROWTH=1 \

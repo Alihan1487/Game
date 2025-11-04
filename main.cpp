@@ -33,7 +33,7 @@ void loop();
 extern "C" void save();
 
 template <typename T>
-std::vector<T> vremove(std::vector<T> vector,int index){
+std::vector<T> vremove(std::vector<T>& vector,int index){
     std::vector<T> real;
     for (int i=0;i<vector.size();i++)
     if (i!=index)
@@ -41,7 +41,7 @@ std::vector<T> vremove(std::vector<T> vector,int index){
     return real;
 }
 template <typename T>
-std::vector<T> vremove(std::vector<T> vector,T element){
+std::vector<T> vremove(std::vector<T>& vector,T element){
     std::vector<T> real;
     for (int i=0;i<vector.size();i++)
     if (vector[i]!=element)
@@ -83,7 +83,7 @@ class Weapon{
     size_t mag_size;
     int ammos;
     inline static std::vector<std::tuple<SDL_Rect,std::tuple<int,int>,int>> bullets;
-    static void update_all(SDL_Renderer* rend,std::vector<Wall*> walls);
+    static void update_all(SDL_Renderer* rend,std::vector<Wall*>& walls);
     virtual void reload(){};
     virtual void shoot(SDL_Rect who,int x,int y){};
 };
@@ -143,7 +143,7 @@ class Wall : public Sprite{
     }
 };
 
-void Weapon::update_all(SDL_Renderer* rend,std::vector<Wall*> walls){
+void Weapon::update_all(SDL_Renderer* rend,std::vector<Wall*>& walls){
     std::vector<std::tuple<SDL_Rect,std::tuple<int,int>,int>> real;
     for (auto i:bullets){
         SDL_Rect r=std::get<0>(i);
@@ -193,17 +193,11 @@ class Player : public Sprite{
         ry+=dy;
     }
     void setX(int x){
-        if (x>rx)
-            move(x-rx,0);
-        else if (x<rx)
-            move(x-rx,0);
+        move(x-rx,0);
         rx=x;
     }
     void setY(int y){
-        if (y>ry)
-            move(y-ry,0);
-        else if (y<ry)
-            move(y-ry,0);
+        move(0,y-ry);
         ry=y;
     }
     void update() override{
@@ -312,6 +306,22 @@ class MainS{
     }
 };
 
+class SecS{
+    public:
+    inline static std::vector<Wall*> walls;
+    inline static Player me;
+    inline static std::vector<Sprite*> sprites;
+    inline static std::vector<Enemy*> enemies;
+    inline static Enemy m;
+    static void init(){
+        me=Player(SDL_Rect{0,0,0,0},&walls,&sprites);
+        enemies.push_back(&m);
+        sprites.push_back(&m);
+        m.rect={100,100,200,200};
+        m.p=&me;
+    }
+};
+
 extern "C"{ 
 EMSCRIPTEN_KEEPALIVE
 void load(int no){
@@ -360,6 +370,8 @@ void save(){
 }
 }
 
+void loop2();
+
 void loop() {
     cur=SDL_GetTicks();
     delta=(cur-last)/1000.f;
@@ -373,6 +385,11 @@ void loop() {
     while (SDL_PollEvent(&e)) {
         if (e.type == SDL_QUIT)
             running = false;
+        if (e.type==SDL_KEYDOWN)
+            if (e.key.keysym.sym==SDLK_1){
+                emscripten_cancel_main_loop();
+                emscripten_set_main_loop(loop2,0,1);
+            }
         MainS::me.evupdate(e);
     }
     if (!running)
@@ -399,7 +416,22 @@ void loop() {
     SDL_RenderPresent(renderer);
 }
 
-
+void loop2(){
+    cur=SDL_GetTicks();
+    delta=(cur-last)/1000.f;
+    last=cur;
+    SDL_Event ev;
+    while (SDL_PollEvent(&ev)){
+        if (ev.type==SDL_QUIT)
+            emscripten_cancel_main_loop();
+        SecS::me.evupdate(ev);
+    }
+    SDL_SetRenderDrawColor(renderer,0,0,0,255);
+    SDL_RenderClear(renderer);
+    SecS::me.update();
+    Weapon::update_all(renderer,SecS::walls);
+    SDL_RenderPresent(renderer);
+}
 
 int main() {
 
@@ -409,10 +441,15 @@ int main() {
     
     MainS::init();
     MainS::me.player=new Pistol(99);
-    Wall w(SDL_Rect{300,300,100,100},&MainS::sprites);
-    MainS::walls.push_back(&w);
+    Wall* w=new Wall(SDL_Rect{300,300,100,100},&MainS::sprites);
+    MainS::walls.push_back(w);
     MainS::me.rect.w=100;
     MainS::me.rect.h=100;
+
+    SecS::init();
+    SecS::me.player=new Pistol(99);
+    SecS::me.rect.w=100;
+    SecS::me.rect.h=100;
 
     window = SDL_CreateWindow("SDL + Emscripten", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 600, 0);
     renderer = SDL_CreateRenderer(window, -1, 0);
