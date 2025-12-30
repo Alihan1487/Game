@@ -376,6 +376,9 @@ void loop() {
     cur=SDL_GetTicks();
     delta=(cur-last)/1000.f;
     last=cur;
+    if (delta<0.0.016){
+        
+    }
     SDL_Event e;
     if (alpha>0)
     alpha-=100*delta;
